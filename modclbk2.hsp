@@ -1,0 +1,93 @@
+// 
+// tds12 氏のモジュールの改造版
+// 元 : http://hsp.tv/play/pforum.php?mode=all&num=62130
+// 
+
+#ifndef _MODCLBK2_
+#define global _MODCLBK2_
+
+#define global labelptr(%1, %2, %3) _clbklb_@MODCLBK2 = %3 : _labelptr@MODCLBK2 %1, %2, _clbklb_@MODCLBK2
+#define global labelargc wparam
+#define global labelargv(%1) dupptr %1, lparam, labelargc * 4, vartype("int")
+
+#module MODCLBK2 clbk
+
+#ifndef _MODBITSHIFTRIGHT_
+#define _MODBITSHIFTRIGHT_
+
+#defcfunc uintbitshiftright int data, int n
+
+high = 0
+
+if (data & 0x80000000) {
+high = 1 << (31 - n)
+}
+
+return ((data & 0x7fffffff) >> n) | high
+
+#endif
+
+#include "kernel32.as"
+
+#uselib "msvcrt.dll"
+#func malloc "malloc" int
+#func free "free" int
+
+// 
+// clbkptr : コールバック関数へのポインタ
+// argmax  : 関数の引数の数
+// clbklb  : 呼び出すサブルーチンが入った変数
+// 
+#modinit var clbkptr, int argmax, var clbklb
+
+flOldProtect = 0
+mref ctx, 68
+code_callptr = lpeek(ctx, 168 + 48)
+ilb = lpeek(clbklb, 0)
+
+if (argmax > 0) {
+dim clbk, 56
+VirtualProtect varptr(clbk), 221, 0x40, varptr(flOldProtect) // PAGE_EXECUTE_READWRITE
+clbk( 0) = 0x83ec8b55, 0x45c72cec, 0x000000fc, 0xf845c700
+clbk( 4) = argmax, (varptr(malloc) & 0x000000ff) << 24 | 0x00e045c7, 0xc7000000 | uintbitshiftright(varptr(malloc) & 0xffffff00, 8), ((varptr(free) & 0x0000ffff) << 16) | 0x0000e445
+clbk( 8) = 0x45c70000 | uintbitshiftright(varptr(free) & 0xffff0000, 16), ((code_callptr & 0x00ffffff) << 8) | 0x000000ec, uintbitshiftright(code_callptr & 0xff000000, 24) | 0xf8458b00, 0x5002e0c1
+clbk(12) = 0xffe04d8b, 0x04c483d1, 0xc7d84589, (((varptr(ctx) + 36) & 0x0000ffff) << 16) | 0x0000f445
+clbk(16) = 0x45c70000 | uintbitshiftright((varptr(ctx) + 36) & 0xffff0000, 16), (((varptr(ctx) + 40) & 0x00ffffff) << 8) | 0x000000dc, 0xf045c700 | uintbitshiftright((varptr(ctx) + 40) & 0xff000000, 24), varptr(ctx) + 784
+clbk(20) = 0x00e845c7, 0x8d000000, 0x55890c55, 0xd8458be8
+clbk(24) = 0x89084d8b, 0xd445c708, 0x00000001, 0x558b09eb
+clbk(28) = 0x01c283d4, 0x8bd45589, 0x4539f845, 0x8b1a7dd4
+clbk(32) = 0xc183e84d, 0xe84d8904, 0x8bd4558b, 0x4d8bd845
+clbk(36) = 0xfc498be8, 0xeb900c89, 0xf4558bd5, 0x89f8458b
+clbk(40) = 0xdc4d8b02, 0x89d8558b, (ilb & 0x0000ffff) << 16 | 0x00006811, 0x458b0000 | uintbitshiftright(ilb & 0xffff0000, 16)
+clbk(44) = 0x83d0ffec, 0x4d8b04c4, 0x89118bf0, 0x45c7fc55
+clbk(48) = 0x000000e8, 0xd8458b00, 0xe44d8b50, 0xc483d1ff
+clbk(52) = 0x04c48304, 0x8bfc458b, (((argmax * 4) & 0xff) << 24) | 0x00c25de5, ((argmax * 4) & 0xff00) >> 8
+}
+
+if (argmax == 0) {
+dim clbk, 13
+VirtualProtect varptr(clbk), 88, 0x40, varptr(flOldProtect) // PAGE_EXECUTE_READWRITE
+clbk( 0) = 0x83ec8b55, 0x45c714ec, 0x000000fc, 0xf045c700
+clbk( 4) = code_callptr, (((varptr(ctx) + 36) & 0x000000ff) << 24) | 0x00f845c7, 0xc7000000 | uintbitshiftright((varptr(ctx) + 36)&0xffffff00, 8), (((varptr(ctx) + 40) & 0x0000ffff) << 16) | 0x0000ec45
+clbk( 8) = 0x45c70000|uintbitshiftright((varptr(ctx) + 40) & 0xffff0000, 16), (((varptr(ctx) + 784) & 0x00ffffff) << 8) | 0x000000f4, 0xf8458b00 | uintbitshiftright((varptr(ctx) + 784) & 0xff000000, 24), 0x000000c7
+clbk(12) = 0x4d8b0000, 0x0001c7ec, 0x68000000, ilb
+clbk(16) = 0xfff0558b, 0x04c483d2, 0x8bf4458b, 0xfc4d8908
+clbk(20) = 0x8bfc458b, 0x00c35de5
+}
+
+clbkptr = varptr(clbk)
+
+return
+
+#deffunc local _labelptr var _clbk, int _argmax, var _clbklb
+
+newmod _clbk, MODCLBK2, _clbkptr_@MODCLBK2, _argmax, _clbklb
+
+return _clbkptr_@MODCLBK2
+
+#global
+
+ldim _clbklb_@MODCLBK2, 1
+dim _clbkptr_@MODCLBK2, 1
+
+#endif

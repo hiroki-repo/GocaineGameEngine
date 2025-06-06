@@ -1,0 +1,137 @@
+//Gocaine eZ80 Based Game Engine
+//(C)2012-2025 Gocaine Project
+#include "migs.as"
+#include "modclbk.as"
+#include "kernel32.as"
+#include "eZ80.as"
+#module
+#deffunc drawfont var fontdata,int charid
+repeat 8:cnt2=cnt
+repeat 8
+if ((peek(fontdata,(charid * 8) + cnt2) << cnt) & 128){pset ginfo(22)+cnt,ginfo(23)+cnt2}
+loop
+loop
+return
+#global
+
+/*
+push ebp
+mov ebp,esp
+mov eax,[ebp+16]
+mov ecx,0xffffffff
+cmp eax,2
+jge jmptofcx
+and eax,1
+jz writemem
+mov eax,[ebp+8]
+add eax,ecx
+mov eax,[eax]
+pop ebp
+ret
+writemem:
+mov eax,[ebp+8]
+add eax,ecx
+mov ecx,[ebp+12]
+mov [eax],cl
+pop ebp
+ret
+jmptofcx:
+pop ebp
+mov eax,0xffffffff
+jmp eax
+*/
+memaccess=0x8BE58955,0xFFB91045,0x83FFFFFF,0x1A7D02F8,0x7401E083,0x08458B09,0x008BC801,0x458BC35D,0x8BC80108,0x08880C4D,0xB85DC35D,0xFFFFFFFF,0x0000E0FF
+flOldProtect=0
+VirtualProtect varptr(memaccess), varsize(memaccess), 0x40, varptr(flOldProtect) // PAGE_EXECUTE_READWRITE
+makeclbkfunc clbk_macmemaccess, 3, *macmemaccess,1
+VirtualAlloc 0x40000000,0x1000000,0x3000,0x40
+dupptr ez80vmemory,stat,0x1000000,2
+dupptr fontpcgram,varptr(ez80vmemory)+0xce1000,0x800,2
+
+buffer 1,640,480
+cls 4
+mref vram,66
+buffer 2,640,480
+gsel 0,0
+bgscr 0,ginfo(20),ginfo(21),0,0,0
+oncmd gosub *keydown_wm,0x100
+oncmd gosub *keyup_wm,0x101
+lpoke memaccess,0x7,varptr(ez80vmemory)
+lpoke memaccess,0x2c,clbk_macmemaccess
+ez80macfuncset varptr(memaccess)
+
+dupptr eZ80_reg,cpu_get_regptr(),64,2
+//control_reset
+vramptrinez80=0xc00000
+
+bload "application.bin",ez80vmemory
+
+faddprocprocdl=*faddprocprocd
+lpoke ez80vmemory,0xf00000,lpeek(faddprocprocdl,0)
+lpoke ez80vmemory,0xf00004,0xc9dcdb
+
+cpu_reset
+//stop
+repeat
+redraw 0
+repeat 480
+memcpy ez80vmemory,vram,640*3,((640*3)*cnt)+vramptrinez80,(640*3)*(479-cnt)
+loop
+repeat (50000000)/60:continue cnt+cpu_execute():loop
+repeat 480
+memcpy vram,ez80vmemory,640*3,(640*3)*(479-cnt),((640*3)*cnt)+vramptrinez80
+loop
+gsel 2,0
+redraw 0
+pos 0,0
+gzoom 640,480,1,0,0,640,480,0
+repeat 4800
+pos (cnt\80)*8,(cnt/80)*8
+color peek(ez80vmemory,0xce4000+cnt),peek(ez80vmemory,0xce6000+cnt),peek(ez80vmemory,0xce8000+cnt)
+drawfont fontpcgram,peek(ez80vmemory,0xce2000+cnt)
+loop
+gsel 0,0
+pos 0,0
+gzoom ginfo(26),ginfo(27),2,0,0,640,480,1
+redraw 1
+await 17
+loop
+stop
+*macmemaccess
+argclbkfunc argv
+switch argv(2)
+case 3
+	switch argv(0)&0xFF
+	case 0xdb
+	ldim jmp4ez80,1
+	lpoke jmp4ez80,0,(lpeek(ez80vmemory,(lpeek(eZ80_reg,0x30)-6)&0xFFFFFF)&0xFFFFFF)+varptr(ez80vmemory)
+	mref stat4edit,64
+	lpoke stat4edit,0,varptr(eZ80_reg)
+	goto jmp4ez80
+	swbreak
+	case 0xdc
+	ldim jmp4ez80,1
+	lpoke jmp4ez80,0,lpeek(ez80vmemory,(lpeek(eZ80_reg,0x30)-6)&0xFFFFFF)
+	mref stat4edit,64
+	lpoke stat4edit,0,varptr(eZ80_reg)
+	goto jmp4ez80
+	swbreak
+	swend
+swbreak
+swend
+return 0
+
+*keydown_wm
+wparamab=wparam
+poke ez80vmemory,0xce1800+(wparamab/8),peek(ez80vmemory,0xce1800+(wparamab/8))|(1<<(wparamab\8))
+return
+*keyup_wm
+wparamab=wparam
+poke ez80vmemory,0xce1800+(wparamab/8),peek(ez80vmemory,0xce1800+(wparamab/8))&(0xff^(1<<(wparamab\8)))
+return
+
+*faddprocprocd
+dupptr str4loadeddata,varptr(ez80vmemory)+lpeek(eZ80_reg,4),256,2
+lpoke ez80vmemory,lpeek(eZ80_reg,8),_faddproc(str4loadeddata)
+return 0
+stop
