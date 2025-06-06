@@ -1,0 +1,30 @@
+dupptr memoryspace,0x40000000,0x1000000,2
+lpoke memoryspace,0xb00000,lpeek(*loadfile4ez,0)
+lpoke memoryspace,0xb00008,lpeek(*savefile4ez,0)
+lpoke memoryspace,0xb00010,lpeek(*existfile4ez,0)
+repeat 3
+lpoke memoryspace,0xb00004+(cnt*8),0xc9dcdb
+loop
+return 0
+
+*loadfile4ez
+dupptr eZ80_reg,stat,64,2
+dupptr fname4ez,varptr(memoryspace)+lpeek(eZ80_reg,8),256,2
+dupptr content4ez,varptr(memoryspace)+lpeek(eZ80_reg,12),lpeek(eZ80_reg,4),2
+bload fname4ez,content4ez,-1,lpeek(eZ80_reg,20)
+poke eZ80_reg,12,strsize
+return stat
+
+*savefile4ez
+dupptr eZ80_reg,stat,64,2
+dupptr fname4ez,varptr(memoryspace)+lpeek(eZ80_reg,8),256,2
+dupptr content4ez,varptr(memoryspace)+lpeek(eZ80_reg,12),lpeek(eZ80_reg,4),2
+bsave fname4ez,content4ez,-1,lpeek(eZ80_reg,20)
+poke eZ80_reg,12,strsize
+return stat
+
+*existfile4ez
+dupptr fname4ez,varptr(memoryspace)+lpeek(eZ80_reg,8),256,2
+exist fname4ez
+poke eZ80_reg,12,strsize
+return stat

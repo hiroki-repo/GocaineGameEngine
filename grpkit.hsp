@@ -1,0 +1,81 @@
+dupptr memoryspace,0x40000000,0x1000000,2
+lpoke memoryspace,0xb10000,lpeek(*picload4ez,0)
+lpoke memoryspace,0xb10008,lpeek(*pos4ez,0)
+lpoke memoryspace,0xb10010,lpeek(*pset4ez,0)
+lpoke memoryspace,0xb10018,lpeek(*boxf4ez,0)
+lpoke memoryspace,0xb10020,lpeek(*mes4ez,0)
+lpoke memoryspace,0xb10028,lpeek(*color4ez,0)
+repeat 6
+lpoke memoryspace,0xb10004+(cnt*8),0xc9dcdb
+loop
+gsel 1,0
+mref vram,66
+return 0
+
+*picload4ez
+repeat 480
+memcpy vram,memoryspace,640*3,(640*3)*(479-cnt),((640*3)*cnt)+0xc00000
+loop
+gsel 1,0
+dupptr eZ80_reg,stat,64,2
+dupptr fname4ez,varptr(memoryspace)+lpeek(eZ80_reg,8),256,2
+picload fname4ez,1
+repeat 480
+memcpy memoryspace,vram,640*3,((640*3)*cnt)+0xc00000,(640*3)*(479-cnt)
+loop
+return 0
+
+*pos4ez
+gsel 1,0
+dupptr eZ80_reg,stat,64,2
+pos lpeek(eZ80_reg,4),lpeek(eZ80_reg,8)
+return 0
+
+*pset4ez
+repeat 480
+memcpy vram,memoryspace,640*3,(640*3)*(479-cnt),((640*3)*cnt)+0xc00000
+loop
+gsel 1,0
+dupptr eZ80_reg,stat,64,2
+pset lpeek(eZ80_reg,4),lpeek(eZ80_reg,8)
+repeat 480
+memcpy memoryspace,vram,640*3,((640*3)*cnt)+0xc00000,(640*3)*(479-cnt)
+loop
+return 0
+
+*boxf4ez
+repeat 480
+memcpy vram,memoryspace,640*3,(640*3)*(479-cnt),((640*3)*cnt)+0xc00000
+loop
+gsel 1,0
+dupptr eZ80_reg,stat,64,2
+boxf lpeek(eZ80_reg,4),lpeek(eZ80_reg,8),lpeek(eZ80_reg,20),lpeek(eZ80_reg,24)
+repeat 480
+memcpy memoryspace,vram,640*3,((640*3)*cnt)+0xc00000,(640*3)*(479-cnt)
+loop
+return 0
+
+*mes4ez
+repeat 480
+memcpy vram,memoryspace,640*3,(640*3)*(479-cnt),((640*3)*cnt)+0xc00000
+loop
+gsel 1,0
+dupptr eZ80_reg,stat,64,2
+dupptr text4ez,varptr(memoryspace)+lpeek(eZ80_reg,8),256,2
+mes text4ez,lpeek(eZ80_reg,12)
+repeat 480
+memcpy memoryspace,vram,640*3,((640*3)*cnt)+0xc00000,(640*3)*(479-cnt)
+loop
+return 0
+
+*color4ez
+repeat 480
+memcpy vram,memoryspace,640*3,(640*3)*(479-cnt),((640*3)*cnt)+0xc00000
+loop
+gsel 1,0
+dupptr eZ80_reg,stat,64,2
+color peek(eZ80_reg,6),peek(eZ80_reg,5),peek(eZ80_reg,4)
+repeat 480
+memcpy memoryspace,vram,640*3,((640*3)*cnt)+0xc00000,(640*3)*(479-cnt)
+loop
+return 0
